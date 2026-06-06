@@ -112,9 +112,14 @@
   .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;}
   .tag{font-size:11.5px;color:var(--muted-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;}
   .empty{text-align:center;color:var(--muted);padding:24px 8px;font-size:14.5px;}
-  .morebar{display:none;margin:28px auto 0;width:min(100%,520px);}
-  .morebar.on{display:block;}
-  .morebar .go{width:100%;min-height:54px;justify-content:center;font-size:16px;}
+  .morebar{display:none;margin:28px auto 0;width:min(100%,620px);grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
+  .morebar.on{display:grid;}
+  .morebar .go,.morebar .ghost{width:100%;min-height:54px;justify-content:center;font-size:16px;}
+  .ghost{font-family:var(--body);font-weight:700;color:var(--text);cursor:pointer;background:rgba(255,255,255,0.035);
+    border:1px solid var(--line-2);border-radius:11px;padding:12px 18px;display:inline-flex;align-items:center;gap:8px;
+    transition:transform .15s, border-color .2s, color .2s, background .2s;}
+  .ghost:hover{transform:translateY(-1px);border-color:rgba(47,214,191,0.45);color:var(--accent);background:rgba(47,214,191,0.06);}
+  .ghost:disabled{opacity:.42;cursor:not-allowed;transform:none;color:var(--muted);}
 
   /* drawer */
   .drawer{display:none;margin-top:16px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:20px;}
@@ -154,8 +159,8 @@
     .go{justify-content:center;}
     .corpus{text-align:center;}
     .results{margin-top:26px;gap:12px;}
-    .morebar{margin-top:22px;width:100%;}
-    .morebar .go{min-height:52px;}
+    .morebar{margin-top:22px;width:100%;grid-template-columns:1fr;}
+    .morebar .go,.morebar .ghost{min-height:52px;}
     .card{border-radius:13px;padding:16px;}
     .who{display:grid;gap:3px;}
     .who .name{font-size:17px;line-height:1.35;overflow-wrap:anywhere;}
@@ -217,6 +222,9 @@
   <div class="res-head" id="resHead"><h2 id="resSub"></h2></div>
   <div class="results" id="results"></div>
   <div class="morebar" id="morebar">
+    <button class="ghost" id="prevBatch" type="button">
+      查看上一批
+    </button>
     <button class="go" id="more" type="button">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       换一批
@@ -235,11 +243,13 @@ const EXAMPLES = [
 ];
 
 const $ = s => document.querySelector(s);
-const introEl=$("#intro"), needEl=$("#need"), goEl=$("#go"), moreEl=$("#more"),
+const introEl=$("#intro"), needEl=$("#need"), goEl=$("#go"), moreEl=$("#more"), prevBatchEl=$("#prevBatch"),
       countEl=$("#count"), resultsEl=$("#results"), resHead=$("#resHead"),
       resSub=$("#resSub"), loading=$("#loading"), loadmsg=$("#loadmsg"),
       morebar=$("#morebar");
 let seenIds = [];
+let batches = [];
+let currentBatchIndex = -1;
 
 const chipsEl=$("#chips");
 EXAMPLES.forEach(t=>{ const c=document.createElement("button"); c.className="chip"; c.textContent=t;
@@ -254,18 +264,24 @@ function startLoading(){ resultsEl.innerHTML=""; resHead.classList.remove("on");
 function stopLoading(){ loading.classList.remove("on"); clearInterval(lmTimer); }
 function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 
-function render(result){
+function updateMorebar(){
+  const hasBatch = currentBatchIndex >= 0;
+  morebar.classList.toggle("on", hasBatch);
+  prevBatchEl.disabled = currentBatchIndex <= 0;
+}
+
+function renderBatch(result, {remember=true}={}){
   if(result.corpusCount) countEl.textContent = result.corpusCount;
   const matches = (result.matches||[]).filter(m=>m.person).slice(0,4);
   resHead.classList.add("on");
-  resSub.textContent = matches.length ? `为你锁定 ${matches.length} 位 · 按契合度排序` : "";
+  resSub.textContent = matches.length ? `为你锁定 ${matches.length} 位 · 第 ${currentBatchIndex + 1} 批` : "";
   let html="";
   if(result.note){ html += `<div class="note">${esc(result.note)}</div>`; }
   if(!matches.length){
     html += `<div class="card" style="opacity:1;transform:none"><div class="empty">这次没有找到足够契合的人选。<br>把诉求说得更具体一点（想要的结果、行业、阶段），AI 会找得更准。</div></div>`;
-    resultsEl.innerHTML=html; morebar.classList.remove("on"); return;
+    resultsEl.innerHTML=html; updateMorebar(); return;
   }
-  seenIds = [...new Set([...seenIds, ...matches.map(m=>m.id)])];
+  if(remember) seenIds = [...new Set([...seenIds, ...matches.map(m=>m.id)])];
   matches.forEach((m,idx)=>{
     const p=m.person;
     const score=Math.max(0,Math.min(100,Math.round(m.score||0)));
@@ -292,7 +308,7 @@ function render(result){
       catch(e){ const ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");}catch(_){} ta.remove(); }
       const o=b.textContent; b.textContent="已复制 ✓"; setTimeout(()=>b.textContent=o,1500); };
   });
-  morebar.classList.add("on");
+  updateMorebar();
 }
 function showError(msg){
   resHead.classList.add("on"); resSub.textContent=""; morebar.classList.remove("on");
@@ -302,8 +318,8 @@ function showError(msg){
 async function run({append=false}={}){
   const intro=introEl.value.trim(), need=needEl.value.trim();
   if(!need){ needEl.focus(); needEl.style.borderColor="var(--danger)"; setTimeout(()=>needEl.style.borderColor="",1200); return; }
-  if(!append) seenIds = [];
-  goEl.disabled=true; moreEl.disabled=true; startLoading();
+  if(!append){ seenIds = []; batches = []; currentBatchIndex = -1; }
+  goEl.disabled=true; moreEl.disabled=true; prevBatchEl.disabled=true; startLoading();
   try{
     const resp = await fetch("/api/match", {
       method: "POST",
@@ -312,14 +328,22 @@ async function run({append=false}={}){
     });
     const result = await resp.json();
     if(!resp.ok) throw new Error(result.error || "后端匹配失败");
-    stopLoading(); render(result);
+    stopLoading();
+    batches.push(result);
+    currentBatchIndex = batches.length - 1;
+    renderBatch(result);
   }catch(err){
     stopLoading();
     showError("后端或 AI 接口暂时没有完成匹配。请确认本地服务已启动，且 API 配置可用。\n\n（错误信息："+(err.message||err)+"）");
-  }finally{ goEl.disabled=false; moreEl.disabled=false; }
+  }finally{ goEl.disabled=false; moreEl.disabled=false; updateMorebar(); }
 }
 goEl.addEventListener("click", run);
 moreEl.addEventListener("click", ()=>run({append:true}));
+prevBatchEl.addEventListener("click", ()=>{
+  if(currentBatchIndex <= 0) return;
+  currentBatchIndex -= 1;
+  renderBatch(batches[currentBatchIndex], {remember:false});
+});
 needEl.addEventListener("keydown", e=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") run(); });
 
 async function loadCount(){

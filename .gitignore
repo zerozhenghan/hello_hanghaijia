@@ -1,0 +1,39 @@
+.DS_Store
+
+# Editor and OS noise
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies and build outputs
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+coverage/
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+api配置.md
+
+# Local archives
+*.zip
+
+# Generated contact assets not needed for deployment
+生财通讯录/.browser-profile/
+生财通讯录/.codex-build/
+生财通讯录/avatars/
+生财通讯录/cards/
+生财通讯录/outputs/*
+!生财通讯录/outputs/20260606-广州大课现场群-生财通讯录整理.json

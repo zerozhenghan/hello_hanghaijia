@@ -1,0 +1,13 @@
+{
+  "name": "ai-navigator-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node files/server.mjs",
+    "dev": "PORT=8787 node files/server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

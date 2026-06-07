@@ -80,6 +80,29 @@
   .spin{width:18px;height:18px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:rot .8s linear infinite;flex:0 0 auto;}
   @keyframes rot{to{transform:rotate(360deg)}}
 
+  .progress-panel{display:none;margin-top:18px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:16px;}
+  .progress-panel.on{display:grid;gap:14px;animation:fade .3s ease;}
+  .progress-status{display:grid;gap:8px;}
+  .progress-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+  .progress-title{font-weight:700;font-size:15px;color:var(--text);}
+  .progress-percent{font-family:var(--display);font-weight:700;font-size:18px;color:var(--accent);}
+  .progress-track{height:7px;border-radius:99px;background:rgba(0,0,0,.3);overflow:hidden;border:1px solid rgba(255,255,255,.04);}
+  .progress-fill{height:100%;width:0;border-radius:99px;background:var(--grad);transition:width .75s cubic-bezier(.2,.8,.2,1);}
+  .progress-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+  .metric{border:1px solid var(--line);border-radius:11px;padding:10px 12px;background:rgba(0,0,0,.16);}
+  .metric .num{font-family:var(--display);font-weight:700;font-size:21px;color:var(--accent);line-height:1.2;}
+  .metric .txt{font-size:12px;color:var(--muted);margin-top:3px;}
+  .steps{display:grid;gap:8px;}
+  .step{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted-2);box-shadow:0 0 0 4px rgba(255,255,255,.02);}
+  .step.on{color:var(--text);}
+  .step.on .dot{background:var(--accent);box-shadow:0 0 0 4px rgba(47,214,191,.1);}
+  .step.done{color:var(--accent);}
+  .signals,.preview-list{display:flex;flex-wrap:wrap;gap:7px;}
+  .signal{font-size:11.5px;color:var(--accent);border:1px solid rgba(47,214,191,.24);background:rgba(47,214,191,.06);border-radius:999px;padding:4px 9px;}
+  .preview-item{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:6px 9px;max-width:100%;overflow-wrap:anywhere;}
+  .progress-note{font-size:12.5px;color:var(--muted-2);line-height:1.6;}
+
   /* results */
   .results{margin-top:34px;display:grid;gap:14px;}
   .res-head{display:none;margin:0 2px 6px;}
@@ -193,6 +216,7 @@
     .go{justify-content:center;}
     .corpus{text-align:center;}
     .secondary-actions .ghost{min-height:50px;}
+    .progress-grid{grid-template-columns:1fr;}
     .results{margin-top:26px;gap:12px;}
     .morebar{margin-top:22px;width:100%;}
     .morebar .go,.morebar .ghost{min-height:52px;}
@@ -265,6 +289,7 @@
   </section>
 
   <div class="loading" id="loading"><span class="spin"></span><span id="loadmsg">正在扫描全场参会者……</span></div>
+  <div class="progress-panel" id="progressPanel"></div>
 
   <div class="res-head" id="resHead"><h2 id="resSub"></h2></div>
   <div class="results" id="results"></div>
@@ -290,7 +315,7 @@ const $ = s => document.querySelector(s);
 const introEl=$("#intro"), needEl=$("#need"), goEl=$("#go"), moreEl=$("#more"),
       countEl=$("#count"), resultsEl=$("#results"), resHead=$("#resHead"),
       resSub=$("#resSub"), loading=$("#loading"), loadmsg=$("#loadmsg"),
-      morebar=$("#morebar");
+      morebar=$("#morebar"), progressPanel=$("#progressPanel");
 let seenIds = [];
 let batches = [];
 let currentBatch = [];
@@ -302,15 +327,92 @@ const chipsEl=$("#chips");
 EXAMPLES.forEach(t=>{ const c=document.createElement("button"); c.className="chip"; c.textContent=t;
   c.onclick=()=>{ needEl.value=t; needEl.focus(); }; chipsEl.appendChild(c); });
 
-const LOADING_MSGS=["正在扫描全场参会者……","比对能力、资源与需求……","计算每个人的契合度……","为你绘制最优航线……"];
+const LOADING_MSGS=["正在理解你的诉求……","正在扫描通讯录……","正在命中候选方向……","AI 正在精修推荐理由……","正在整理滑卡结果……"];
 let lmTimer=null;
+let percentTimer=null;
+let progressState={};
 function startLoading(){ resultsEl.innerHTML=""; resHead.classList.remove("on");
   morebar.classList.remove("on");
-  loading.classList.add("on"); let i=0; loadmsg.textContent=LOADING_MSGS[0];
-  lmTimer=setInterval(()=>{ i=(i+1)%LOADING_MSGS.length; loadmsg.textContent=LOADING_MSGS[i]; }, 1400); }
-function stopLoading(){ loading.classList.remove("on"); clearInterval(lmTimer); }
+  progressState={percent:6, startedAt:Date.now()};
+  renderProgress({phase:0});
+  loading.classList.add("on"); let i=0; loadmsg.textContent=`正在匹配 · ${progressState.percent}%`;
+  lmTimer=setInterval(()=>{ i=(i+1)%LOADING_MSGS.length; renderProgress({phase:Math.min(i,3)}); }, 1800);
+  percentTimer=setInterval(tickProgress, 900); }
+function stopLoading({complete=false}={}){
+  clearInterval(lmTimer); clearInterval(percentTimer);
+  if(complete){
+    renderProgress({percent:100, phase:4});
+    loadmsg.textContent="匹配完成 · 100%";
+  }
+  loading.classList.remove("on");
+  setTimeout(()=>progressPanel.classList.remove("on"), complete ? 180 : 0);
+  progressState={};
+}
 function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 function attr(s){ return esc(s).replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+
+function targetPercentByTime(elapsed){
+  if(elapsed < 3000) return 18 + Math.floor(elapsed / 3000 * 14);
+  if(elapsed < 9000) return 32 + Math.floor((elapsed - 3000) / 6000 * 23);
+  if(elapsed < 28000) return 55 + Math.floor((elapsed - 9000) / 19000 * 27);
+  if(elapsed < 60000) return 82 + Math.floor((elapsed - 28000) / 32000 * 10);
+  return 94;
+}
+
+function tickProgress(){
+  const elapsed = Date.now() - (progressState.startedAt || Date.now());
+  const target = targetPercentByTime(elapsed);
+  const current = Number(progressState.percent || 0);
+  const next = Math.min(96, Math.max(current, Math.min(target, current + (target > current ? 3 : 1))));
+  renderProgress({percent:next});
+}
+
+function renderProgress(data={}){
+  progressState = {...progressState, ...data};
+  const phase = Number.isFinite(progressState.phase) ? progressState.phase : 0;
+  const percent = Math.max(0, Math.min(99, Math.round(progressState.percent ?? 6)));
+  const scanned = progressState.corpusCount ?? "…";
+  const candidates = progressState.candidateCount ?? "…";
+  const excluded = progressState.excludedCount ?? 0;
+  const signals = (progressState.signals||[]).slice(0,6).map(s=>`<span class="signal">${esc(s.label)}</span>`).join("");
+  const preview = (progressState.preview||[]).slice(0,3).map(p=>`<span class="preview-item">${esc(p.name)}${p.role ? ` · ${esc(p.role)}` : ""}</span>`).join("");
+  const steps = [
+    "理解诉求和自我介绍",
+    "扫描现场通讯录",
+    "命中候选人和业务方向",
+    "AI 精修推荐理由与破冰话术"
+  ].map((label,idx)=>{
+    const cls = idx < phase ? "done" : idx === phase ? "on" : "";
+    return `<div class="step ${cls}"><span class="dot"></span><span>${label}</span></div>`;
+  }).join("");
+  progressPanel.classList.add("on");
+  loadmsg.textContent = `正在匹配 · ${percent}%`;
+  progressPanel.innerHTML = `
+    <div class="progress-status">
+      <div class="progress-top">
+        <span class="progress-title">${esc(stepsText(phase))}</span>
+        <span class="progress-percent">${percent}%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div>
+    </div>
+    <div class="progress-grid">
+      <div class="metric"><div class="num">${esc(String(scanned))}</div><div class="txt">已扫描成员</div></div>
+      <div class="metric"><div class="num">${esc(String(candidates))}</div><div class="txt">初步候选</div></div>
+      <div class="metric"><div class="num">${esc(String(excluded))}</div><div class="txt">已排除看过</div></div>
+    </div>
+    <div class="steps">${steps}</div>
+    ${signals ? `<div class="signals">${signals}</div>` : ""}
+    ${preview ? `<div class="preview-list">${preview}</div>` : ""}
+    <div class="progress-note">AI 正在阅读候选人的原始介绍并生成可直接开口的话术，通常需要几十秒。</div>`;
+}
+
+function stepsText(phase){
+  if(phase <= 0) return "正在理解你的诉求";
+  if(phase === 1) return "正在扫描现场通讯录";
+  if(phase === 2) return "正在命中候选方向";
+  if(phase >= 4) return "正在整理滑卡结果";
+  return "AI 正在精修推荐理由";
+}
 
 function copyText(text, button){
   const done=()=>{ const o=button.textContent; button.textContent="已复制 ✓"; setTimeout(()=>button.textContent=o,1500); };
@@ -459,15 +561,25 @@ async function run({append=false}={}){
   if(!need){ needEl.focus(); needEl.style.borderColor="var(--danger)"; setTimeout(()=>needEl.style.borderColor="",1200); return; }
   if(!append){ seenIds = []; batches = []; }
   goEl.disabled=true; moreEl.disabled=true; startLoading();
+  const payload = { intro, need, excludeIds: append ? seenIds : [] };
   try{
+    fetch("/api/prefilter", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    })
+      .then(resp=>resp.ok ? resp.json() : null)
+      .then(data=>{ if(data) renderProgress({...data, phase:3}); })
+      .catch(()=>{});
+
     const resp = await fetch("/api/match", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ intro, need, excludeIds: append ? seenIds : [] })
+      body: JSON.stringify(payload)
     });
     const result = await resp.json();
     if(!resp.ok) throw new Error(result.error || "后端匹配失败");
-    stopLoading();
+    stopLoading({complete:true});
     startSwipeBatch(result);
   }catch(err){
     stopLoading();

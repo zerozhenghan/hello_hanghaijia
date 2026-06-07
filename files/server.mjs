@@ -866,6 +866,47 @@ function buildGraph(people, summary) {
   };
 }
 
+async function selectMatchCandidates({ intro, need, excludeIds }) {
+  const { people, count, summary } = await loadPeople();
+  const candidates = prefilter(`${intro} ${need}`, people, excludeIds);
+  return {
+    people,
+    count,
+    summary,
+    candidates,
+    matchSource: "raw_directory"
+  };
+}
+
+function summarizeCandidateSignals(candidates) {
+  const signalCount = new Map();
+  candidates.forEach((person) => {
+    graphTagsFor(person).forEach((tag) => {
+      signalCount.set(tag.label, (signalCount.get(tag.label) || 0) + 1);
+    });
+    (person.tags || []).forEach((tag) => {
+      const clean = safeText(tag);
+      if (!clean || clean.startsWith("编号") || clean === "已匹配" || clean === "待确认" || clean === "未匹配") return;
+      signalCount.set(clean, (signalCount.get(clean) || 0) + 1);
+    });
+  });
+
+  return [...signalCount.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hans-CN"))
+    .slice(0, 8)
+    .map(([label, count]) => ({ label, count }));
+}
+
+function prefilterPreview(candidates) {
+  return candidates.slice(0, 4).map((person) => ({
+    id: person.id,
+    name: person.name,
+    role: person.role,
+    tags: (person.tags || []).slice(0, 3),
+    intro: compactIntro(person.intro)
+  }));
+}
+
 async function readBody(req) {
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
@@ -886,6 +927,25 @@ async function handleApi(req, res) {
     return json(res, 200, buildGraph(people, summary));
   }
 
+  if (req.method === "POST" && req.url === "/api/prefilter") {
+    const body = await readBody(req);
+    const intro = safeText(body.intro);
+    const need = safeText(body.need);
+    const excludeIds = Array.isArray(body.excludeIds) ? body.excludeIds.map(safeText).filter(Boolean) : [];
+    if (!need) return json(res, 400, { error: "请先填写你的诉求" });
+
+    const { count, summary, candidates, matchSource } = await selectMatchCandidates({ intro, need, excludeIds });
+    return json(res, 200, {
+      corpusCount: count,
+      candidateCount: candidates.length,
+      excludedCount: excludeIds.length,
+      matchSource,
+      summary,
+      signals: summarizeCandidateSignals(candidates),
+      preview: prefilterPreview(candidates)
+    });
+  }
+
   if (req.method === "POST" && req.url === "/api/match") {
     const body = await readBody(req);
     const intro = safeText(body.intro);
@@ -893,8 +953,7 @@ async function handleApi(req, res) {
     const excludeIds = Array.isArray(body.excludeIds) ? body.excludeIds.map(safeText).filter(Boolean) : [];
     if (!need) return json(res, 400, { error: "请先填写你的诉求" });
 
-    const { people, count } = await loadPeople();
-    const candidates = prefilter(`${intro} ${need}`, people, excludeIds);
+    const { count, candidates, matchSource } = await selectMatchCandidates({ intro, need, excludeIds });
 
     if (!candidates.length) {
       return json(res, 200, {
@@ -902,7 +961,7 @@ async function handleApi(req, res) {
         note: "已经没有更多未推荐过的候选人了，可以换一个更具体的诉求再试。",
         corpusCount: count,
         candidateCount: 0,
-        matchSource: "raw_directory"
+        matchSource
       });
     }
 
@@ -915,7 +974,7 @@ async function handleApi(req, res) {
         detail: safeText(error.message),
         corpusCount: count,
         candidateCount: candidates.length,
-        matchSource: "raw_directory"
+        matchSource
       });
     }
     return json(res, 200, {
@@ -923,7 +982,7 @@ async function handleApi(req, res) {
       note: safeText(aiResult.note),
       corpusCount: count,
       candidateCount: candidates.length,
-      matchSource: "raw_directory"
+      matchSource
     });
   }
 

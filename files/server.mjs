@@ -130,7 +130,7 @@ async function loadConfig() {
     apiKey: process.env.OPENAI_API_KEY || fileConfig.apiKey,
     baseUrl: process.env.OPENAI_BASE_URL || fileConfig.baseUrl || "https://api.openai.com",
     model: process.env.OPENAI_MODEL || fileConfig.model || "gpt-4.1-mini",
-    timeoutMs: Number(process.env.OPENAI_TIMEOUT_MS || 12000)
+    timeoutMs: Number(process.env.OPENAI_TIMEOUT_MS || 60000)
   };
   return configCache;
 }
@@ -316,11 +316,17 @@ function buildPrompt({ intro, need, candidates }) {
 硬性要求：
 1. 只推荐真正契合的人；优先返回 8 人，如果确实不足 8 人，就如实在 note 里说明，宁缺毋滥，不要硬凑。
 2. 给每人一个 0-100 的匹配分 score，分数要拉开差距、有区分度。
-3. reason 必须引用对方简介里的具体事实，不要空泛。
-4. synergy 说明双方各能给对方带来什么，体现互惠。
-5. icebreaker 写一句这位成员可以直接发出去的话，自然、具体、不尬。
+3. reason 写成「推荐理由」：必须引用对方原始简介里的具体事实，并解释这些事实为什么和用户当前需求相关；不要空泛，不要只说方向相关。
+4. synergy 写成「你们的契合点」：先说用户有什么，再说对方有什么，最后说明双方能如何互补或用户可以向对方请教什么。
+5. icebreaker 写成「破冰开场白」：一句这位成员可以直接发出去的话，要具体提到对方经历、数字或项目，不要模板化。
 6. 全部用简体中文。
 7. 输出必须是合法 JSON。第一个字符必须是 {，最后一个字符必须是 }。
+
+文案风格参考：
+- 推荐理由不要写“对方方向适合围绕资源互换先聊一轮”这种套话。
+- 要写成类似：“Carlchen在本地生活领域有0到1和1到10操盘经验，简介中提到7个月做到车后Top1、合作门店超3万家、月GMV超6500万；驾校陪练属于强本地服务，他的门店合作和区域扩张经验对你做全国招商有参考价值。”
+- 契合点要写清楚双方各自的资源和互补关系。
+- 破冰开场白要能直接复制发送。
 
 只返回一个 JSON 对象，不要任何解释文字、不要 markdown 代码块，格式严格如下：
 {"matches":[{"id":"参会者id","score":88,"reason":"...","synergy":"...","icebreaker":"..."}],"note":"一句总体点评，可空"}
@@ -904,10 +910,13 @@ async function handleApi(req, res) {
     try {
       aiResult = await callAi(buildPrompt({ intro, need, candidates }));
     } catch (error) {
-      aiResult = {
-        matches: fallbackMatches(candidates, intro, need),
-        note: "已先为你整理出 8 位相关候选人，可以左右滑快速筛选，滑完后会生成你想认识的联系人列表。"
-      };
+      return json(res, 504, {
+        error: "AI 正在认真阅读候选人的原始介绍，这次生成超时或失败了。请再试一次，系统不会返回低质量兜底推荐。",
+        detail: safeText(error.message),
+        corpusCount: count,
+        candidateCount: candidates.length,
+        matchSource: "raw_directory"
+      });
     }
     return json(res, 200, {
       matches: withPeople(aiResult.matches, candidates),

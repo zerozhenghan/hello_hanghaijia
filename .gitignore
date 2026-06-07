@@ -37,3 +37,5 @@ api配置.md
 生财通讯录/cards/
 生财通讯录/outputs/*
 !生财通讯录/outputs/20260606-广州大课现场群-生财通讯录整理.json
+!生财通讯录/outputs/graph_profiles.json
+!生财通讯录/outputs/graph_relations.json

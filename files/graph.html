@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI 航海家 · 关系图谱</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a1622;
+    --panel:#0f1f30;
+    --panel-soft:rgba(255,255,255,0.035);
+    --line:rgba(255,255,255,0.09);
+    --line-2:rgba(255,255,255,0.16);
+    --text:#e9eff6;
+    --muted:#8b98a8;
+    --muted-2:#5a6878;
+    --accent:#2fd6bf;
+    --accent-2:#5af0a8;
+    --cyan:#22cae4;
+    --orange:#ffbb70;
+    --pink:#ff8da1;
+    --purple:#a99bff;
+    --grad:linear-gradient(118deg,#5af0a8 0%,#2fd6c8 55%,#22cae4 100%);
+    --body:'Noto Sans SC',-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+    --display:'Sora',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    color:var(--text);
+    font-family:var(--body);
+    background:
+      radial-gradient(920px 520px at 24% -10%, rgba(47,214,191,0.12), transparent 58%),
+      radial-gradient(720px 480px at 88% 4%, rgba(34,202,228,0.08), transparent 58%),
+      var(--bg);
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{min-height:100vh;display:grid;grid-template-rows:auto 1fr;padding:22px;}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:4px 2px 18px;
+  }
+  .brand{display:flex;align-items:center;gap:12px;min-width:0;}
+  .mark{
+    width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+    background:rgba(255,255,255,0.05);border:1.4px solid rgba(255,255,255,0.55);
+    flex:0 0 auto;
+  }
+  .brand h1{font-size:20px;line-height:1.2;font-weight:900;letter-spacing:0;}
+  .brand p{font-size:12px;color:var(--muted);margin-top:2px;}
+  .nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+  .button{
+    min-height:40px;border-radius:10px;border:1px solid var(--line-2);
+    display:inline-flex;align-items:center;gap:8px;padding:9px 14px;
+    color:var(--text);background:rgba(255,255,255,0.035);text-decoration:none;
+    font-size:13px;font-weight:700;font-family:var(--body);cursor:pointer;
+    transition:transform .15s,border-color .2s,background .2s,color .2s;
+  }
+  .button:hover{transform:translateY(-1px);border-color:rgba(47,214,191,0.5);color:var(--accent);background:rgba(47,214,191,0.07);}
+  .button.primary{background:var(--grad);color:#04261f;border:none;}
+  .app{
+    display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:16px;min-height:0;
+  }
+  .graph-pane,.side-pane{
+    border:1px solid var(--line);background:rgba(15,31,48,0.72);
+    box-shadow:0 24px 70px rgba(0,0,0,0.18);backdrop-filter:blur(14px);
+  }
+  .graph-pane{
+    border-radius:16px;min-height:calc(100vh - 104px);position:relative;overflow:hidden;
+  }
+  .toolbar{
+    position:absolute;left:16px;top:16px;right:16px;z-index:3;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;pointer-events:none;
+  }
+  .filters,.searchbox{pointer-events:auto;}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;max-width:70%;}
+  .filter{
+    height:34px;border-radius:9px;border:1px solid var(--line);
+    color:var(--muted);background:rgba(10,22,34,0.72);
+    font-family:var(--body);font-size:12px;font-weight:700;padding:0 11px;cursor:pointer;
+    transition:background .18s,border-color .18s,color .18s;
+  }
+  .filter:hover,.filter.on{color:#062921;background:var(--grad);border-color:transparent;}
+  .searchbox{
+    width:min(280px,34vw);height:38px;border:1px solid var(--line);border-radius:10px;
+    background:rgba(10,22,34,0.78);display:flex;align-items:center;padding:0 12px;
+  }
+  .searchbox input{
+    width:100%;border:none;outline:none;background:transparent;color:var(--text);
+    font-family:var(--body);font-size:13px;
+  }
+  .searchbox input::placeholder{color:var(--muted-2);}
+  canvas{width:100%;height:100%;display:block;}
+  .legend{
+    position:absolute;left:16px;bottom:16px;display:flex;gap:12px;flex-wrap:wrap;
+    color:var(--muted);font-size:12px;background:rgba(10,22,34,0.62);
+    border:1px solid var(--line);border-radius:10px;padding:9px 11px;
+  }
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;}
+  .side-pane{
+    border-radius:16px;padding:18px;display:grid;grid-template-rows:auto auto 1fr;gap:14px;min-height:0;
+  }
+  .stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .stat{
+    border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,0.025);
+    padding:12px;
+  }
+  .stat b{display:block;font-family:var(--display);font-size:22px;line-height:1;color:var(--accent);}
+  .stat span{display:block;margin-top:5px;font-size:12px;color:var(--muted);}
+  .panel{
+    border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,0.025);
+    padding:15px;min-height:0;
+  }
+  .panel h2{font-size:16px;line-height:1.4;font-weight:900;letter-spacing:0;margin-bottom:5px;overflow-wrap:anywhere;}
+  .type{font-size:12px;color:var(--accent);font-weight:700;margin-bottom:12px;}
+  .meta{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;}
+  .pill{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:7px;padding:3px 8px;}
+  .intro{font-size:13.5px;color:var(--muted);line-height:1.72;max-height:210px;overflow:auto;padding-right:3px;}
+  .profile-grid{display:grid;gap:10px;margin-top:12px;}
+  .profile-row{border-top:1px solid var(--line);padding-top:10px;}
+  .profile-row b{display:block;font-size:12px;color:var(--muted-2);margin-bottom:6px;}
+  .profile-row p{font-size:13px;color:var(--muted);line-height:1.65;}
+  .relations{display:grid;gap:9px;max-height:38vh;overflow:auto;padding-right:2px;}
+  .relation{
+    border:1px solid var(--line);border-radius:11px;background:rgba(0,0,0,0.12);
+    padding:11px 12px;cursor:pointer;transition:border-color .18s,background .18s;
+  }
+  .relation:hover{border-color:rgba(47,214,191,0.45);background:rgba(47,214,191,0.05);}
+  .relation-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;}
+  .relation b{display:block;font-size:13px;line-height:1.45;}
+  .score{font-family:var(--display);font-size:12px;color:var(--accent);white-space:nowrap;}
+  .rtype{display:inline-flex;font-size:11px;color:var(--accent);border:1px solid rgba(47,214,191,0.22);border-radius:999px;padding:2px 7px;margin-bottom:7px;}
+  .relation span{display:block;font-size:12px;color:var(--muted);line-height:1.6;}
+  .evidence{margin-top:8px;color:var(--muted-2);font-size:11.5px;line-height:1.55;}
+  .mini-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .mini-btn{border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,0.035);color:var(--text);font-family:var(--body);font-size:12px;font-weight:700;padding:6px 9px;cursor:pointer;}
+  .mini-btn:hover{border-color:rgba(47,214,191,0.45);color:var(--accent);}
+  .empty{font-size:13px;color:var(--muted);line-height:1.7;}
+  .loading{
+    position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);
+    background:rgba(10,22,34,0.42);z-index:4;
+  }
+  .loading.hide{display:none;}
+  .spin{width:22px;height:22px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:rot .8s linear infinite;margin:0 auto 10px;}
+  .toast{
+    position:absolute;right:16px;bottom:16px;color:var(--muted);font-size:12px;
+    background:rgba(10,22,34,0.7);border:1px solid var(--line);border-radius:10px;padding:9px 12px;
+  }
+  @keyframes rot{to{transform:rotate(360deg)}}
+  @media (max-width:920px){
+    .shell{padding:14px;}
+    .topbar{align-items:flex-start;}
+    .app{grid-template-columns:1fr;}
+    .graph-pane{min-height:68vh;}
+    .side-pane{min-height:auto;}
+    .toolbar{position:static;padding:12px;display:grid;background:rgba(10,22,34,0.45);border-bottom:1px solid var(--line);}
+    .filters{max-width:100%;overflow:auto;flex-wrap:nowrap;padding-bottom:2px;}
+    .filter{flex:0 0 auto;}
+    .searchbox{width:100%;}
+    .legend{left:12px;right:12px;bottom:12px;}
+  }
+  @media (max-width:560px){
+    .topbar{display:grid;}
+    .nav{justify-content:stretch;}
+    .button{justify-content:center;flex:1;}
+    .brand h1{font-size:18px;}
+    .graph-pane{min-height:58vh;border-radius:14px;}
+    .side-pane{border-radius:14px;padding:14px;}
+    .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;}
+    .stat{padding:9px 7px;}
+    .stat b{font-size:18px;}
+    .stat span{font-size:11px;}
+    .relations{max-height:none;}
+    .intro{max-height:none;}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M5 19 C9 17 15 17 19 19" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M12 3 L12 16 L5 16 C7 11 9.5 7 12 3 Z" fill="#fff"/>
+          <path d="M13.5 6 L13.5 16 L19 16 C17.3 12 15.4 9 13.5 6 Z" fill="#fff" fill-opacity="0.7"/>
+        </svg>
+      </span>
+      <div>
+        <h1>关系图谱</h1>
+        <p>AI 航海家 · 现场群业务连接地图</p>
+      </div>
+    </div>
+    <nav class="nav">
+      <a class="button" href="/">返回人脉雷达</a>
+      <button class="button primary" id="fitBtn" type="button">重新聚焦</button>
+    </nav>
+  </header>
+
+  <main class="app">
+    <section class="graph-pane" id="stage">
+      <div class="toolbar">
+        <div class="filters" id="filters"></div>
+        <label class="searchbox">
+          <input id="searchInput" type="search" placeholder="搜索姓名、城市、业务" />
+        </label>
+      </div>
+      <canvas id="graph"></canvas>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--accent)"></i>成员</span>
+        <span><i class="dot" style="background:var(--orange)"></i>业务标签</span>
+        <span><i class="dot" style="background:var(--cyan)"></i>城市</span>
+      </div>
+      <div class="toast" id="toast">已筛选 matched 成员</div>
+      <div class="loading" id="loading"><div><div class="spin"></div><div>正在生成图谱</div></div></div>
+    </section>
+
+    <aside class="side-pane">
+      <div class="stats" id="stats"></div>
+      <section class="panel" id="detail"></section>
+      <section class="panel">
+        <h2>高关联连接</h2>
+        <div class="relations" id="relations"></div>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script>
+const canvas = document.querySelector("#graph");
+const ctx = canvas.getContext("2d");
+const stage = document.querySelector("#stage");
+const loading = document.querySelector("#loading");
+const statsEl = document.querySelector("#stats");
+const detailEl = document.querySelector("#detail");
+const relationsEl = document.querySelector("#relations");
+const filtersEl = document.querySelector("#filters");
+const searchInput = document.querySelector("#searchInput");
+const fitBtn = document.querySelector("#fitBtn");
+const toast = document.querySelector("#toast");
+
+let graph = { nodes: [], edges: [] };
+let nodeMap = new Map();
+let activeFilter = "全部";
+let query = "";
+let selected = null;
+let hover = null;
+let dragNode = null;
+let pointer = { x: 0, y: 0 };
+let viewport = { w: 0, h: 0, dpr: 1 };
+
+const colors = {
+  person: "#2fd6bf",
+  tag: "#ffbb70",
+  city: "#22cae4",
+  dim: "rgba(139,152,168,0.18)",
+  line: "rgba(139,152,168,0.18)",
+  text: "#e9eff6",
+  muted: "#8b98a8"
+};
+
+function esc(s){
+  return String(s || "").replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+}
+
+function copyText(text, button){
+  const done = () => {
+    const old = button.textContent;
+    button.textContent = "已复制";
+    setTimeout(() => { button.textContent = old; }, 1200);
+  };
+  navigator.clipboard?.writeText(text).then(done).catch(() => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand("copy"); }catch(_){}
+    ta.remove();
+    done();
+  });
+}
+
+function listText(items){
+  return (items || []).filter(Boolean).join("、");
+}
+
+function profileRow(title, items){
+  const text = Array.isArray(items) ? listText(items) : esc(items);
+  if(!text) return "";
+  return `<div class="profile-row"><b>${esc(title)}</b><p>${esc(text)}</p></div>`;
+}
+
+function nodeColor(node){
+  if(node.type === "person") return colors.person;
+  if(node.type === "city") return colors.city;
+  return colors.tag;
+}
+
+function resize(){
+  const rect = stage.getBoundingClientRect();
+  viewport.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  viewport.w = Math.max(320, rect.width);
+  viewport.h = Math.max(360, rect.height);
+  canvas.width = Math.floor(viewport.w * viewport.dpr);
+  canvas.height = Math.floor(viewport.h * viewport.dpr);
+  canvas.style.width = viewport.w + "px";
+  canvas.style.height = viewport.h + "px";
+  ctx.setTransform(viewport.dpr, 0, 0, viewport.dpr, 0, 0);
+}
+
+function seedLayout(){
+  const centerX = viewport.w / 2;
+  const centerY = viewport.h / 2;
+  graph.nodes.forEach((node, index) => {
+    const angle = (index / Math.max(1, graph.nodes.length)) * Math.PI * 2;
+    const band = node.type === "person" ? 160 : node.type === "tag" ? 250 : 320;
+    node.x = centerX + Math.cos(angle) * band * (0.55 + Math.random() * 0.65);
+    node.y = centerY + Math.sin(angle) * band * (0.55 + Math.random() * 0.65);
+    node.vx = 0;
+    node.vy = 0;
+  });
+}
+
+function visibleNodeSet(){
+  const visible = new Set();
+  const lower = query.trim().toLowerCase();
+  const hasQuery = lower.length > 0;
+  const matchingIds = new Set();
+
+  graph.nodes.forEach(node => {
+    const p = node.profile || {};
+    const profileText = [
+      ...(p.industries || []), ...(p.resources || []), ...(p.needs || []),
+      ...(p.strengths || []), ...(p.collaboration || []), p.summary, p.stage
+    ].join(" ");
+    const haystack = [node.label, node.group, node.city, ...(node.tags || []), profileText].join(" ").toLowerCase();
+    if(!hasQuery || haystack.includes(lower)) matchingIds.add(node.id);
+  });
+
+  graph.edges.forEach(edge => {
+    const a = nodeMap.get(edge.source);
+    const b = nodeMap.get(edge.target);
+    if(!a || !b) return;
+    const groupHit = activeFilter === "全部" || edge.type?.includes(activeFilter) || a.group === activeFilter || b.group === activeFilter || (edge.tags || []).some(tag => {
+      const tagNode = nodeMap.get(`tag:${tag}`);
+      return tagNode?.group === activeFilter;
+    });
+    const queryHit = !hasQuery || matchingIds.has(a.id) || matchingIds.has(b.id);
+    if(groupHit && queryHit){
+      visible.add(a.id);
+      visible.add(b.id);
+    }
+  });
+
+  if(hasQuery){
+    matchingIds.forEach(id => visible.add(id));
+  }
+  if(!visible.size){
+    graph.nodes.slice(0, 80).forEach(node => visible.add(node.id));
+  }
+  return visible;
+}
+
+function visibleEdges(visible){
+  return graph.edges.filter(edge => visible.has(edge.source) && visible.has(edge.target) && nodeMap.has(edge.source) && nodeMap.has(edge.target));
+}
+
+function tick(){
+  const visible = visibleNodeSet();
+  const edges = visibleEdges(visible);
+  const nodes = graph.nodes.filter(node => visible.has(node.id));
+  const cx = viewport.w / 2;
+  const cy = viewport.h / 2;
+
+  edges.forEach(edge => {
+    const a = nodeMap.get(edge.source);
+    const b = nodeMap.get(edge.target);
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const dist = Math.max(24, Math.hypot(dx, dy));
+    const target = edge.type === "业务标签" ? 98 : edge.type === "同城" ? 120 : 178;
+    const force = (dist - target) * 0.0025 * (edge.weight || 1);
+    const fx = dx / dist * force;
+    const fy = dy / dist * force;
+    a.vx += fx;
+    a.vy += fy;
+    b.vx -= fx;
+    b.vy -= fy;
+  });
+
+  for(let i = 0; i < nodes.length; i += 1){
+    const a = nodes[i];
+    for(let j = i + 1; j < nodes.length; j += 1){
+      const b = nodes[j];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.max(16, Math.hypot(dx, dy));
+      if(dist > 190) continue;
+      const push = (1 - dist / 190) * 0.16;
+      const fx = dx / dist * push;
+      const fy = dy / dist * push;
+      a.vx -= fx;
+      a.vy -= fy;
+      b.vx += fx;
+      b.vy += fy;
+    }
+  }
+
+  nodes.forEach(node => {
+    if(node === dragNode) return;
+    const pull = node.type === "person" ? 0.002 : 0.0035;
+    node.vx += (cx - node.x) * pull;
+    node.vy += (cy - node.y) * pull;
+    node.vx *= 0.84;
+    node.vy *= 0.84;
+    node.x += node.vx;
+    node.y += node.vy;
+    node.x = Math.max(18, Math.min(viewport.w - 18, node.x));
+    node.y = Math.max(72, Math.min(viewport.h - 18, node.y));
+  });
+
+  draw(nodes, edges);
+  requestAnimationFrame(tick);
+}
+
+function draw(nodes, edges){
+  ctx.clearRect(0, 0, viewport.w, viewport.h);
+  ctx.save();
+  edges.forEach(edge => {
+    const a = nodeMap.get(edge.source);
+    const b = nodeMap.get(edge.target);
+    const active = selected && (edge.source === selected.id || edge.target === selected.id);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = active ? "rgba(47,214,191,0.52)" : colors.line;
+    ctx.lineWidth = active ? 1.9 : Math.max(0.7, Math.min(1.6, edge.weight || 1));
+    ctx.stroke();
+  });
+
+  nodes.forEach(node => {
+    const isActive = selected?.id === node.id || hover?.id === node.id;
+    const r = (node.radius || 10) + (isActive ? 4 : 0);
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, r + 7, 0, Math.PI * 2);
+    ctx.fillStyle = isActive ? "rgba(47,214,191,0.14)" : "rgba(255,255,255,0.025)";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = nodeColor(node);
+    ctx.globalAlpha = node.type === "person" ? 0.96 : 0.82;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = isActive ? 2 : 1;
+    ctx.strokeStyle = isActive ? "#e9eff6" : "rgba(255,255,255,0.36)";
+    ctx.stroke();
+  });
+
+  ctx.font = "600 12px 'Noto Sans SC', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  nodes.forEach(node => {
+    const isPointed = selected?.id === node.id || hover?.id === node.id;
+    if(node.type === "person" && !isPointed) return;
+    if(node.type === "tag" && !isPointed && (node.count || 0) < 6) return;
+    const active = selected?.id === node.id || hover?.id === node.id || node.type !== "person";
+    const label = node.label.length > 11 ? node.label.slice(0, 10) + "..." : node.label;
+    ctx.fillStyle = active ? colors.text : "rgba(233,239,246,0.76)";
+    ctx.fillText(label, node.x, node.y + (node.radius || 10) + 9);
+  });
+  ctx.restore();
+}
+
+function nearestNode(x, y){
+  const visible = visibleNodeSet();
+  let best = null;
+  let bestDist = Infinity;
+  graph.nodes.forEach(node => {
+    if(!visible.has(node.id)) return;
+    const dist = Math.hypot(node.x - x, node.y - y);
+    const limit = (node.radius || 10) + 10;
+    if(dist < limit && dist < bestDist){
+      best = node;
+      bestDist = dist;
+    }
+  });
+  return best;
+}
+
+function renderStats(stats){
+  statsEl.innerHTML = [
+    ["成员", stats.people],
+    ["标签", stats.tags],
+    ["城市", stats.cities],
+    ["关系", stats.relations]
+  ].map(([label, value]) => `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`).join("");
+}
+
+function renderFilters(filters){
+  const all = ["全部", ...filters];
+  filtersEl.innerHTML = all.map(name => `<button class="filter ${name === activeFilter ? "on" : ""}" data-filter="${esc(name)}">${esc(name)}</button>`).join("");
+  filtersEl.querySelectorAll(".filter").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeFilter = btn.dataset.filter;
+      filtersEl.querySelectorAll(".filter").forEach(item => item.classList.toggle("on", item === btn));
+      toast.textContent = activeFilter === "全部" ? "已展示全量业务关系" : `已筛选 ${activeFilter}`;
+    });
+  });
+}
+
+function renderDetail(node){
+  if(!node){
+    detailEl.innerHTML = `
+      <h2>全场业务连接</h2>
+      <div class="type">${esc(graph.version === "ai-profile-v2" ? "AI 画像图谱" : "matched 成员图谱")}</div>
+      <p class="intro">这里展示已经完成身份匹配的成员、业务方向、资源需求和高关联连接。选中任意节点后，可以查看这个人的画像与最相关的人脉连接。</p>
+    `;
+    renderRelations();
+    return;
+  }
+
+  const typeLabel = node.type === "person" ? "成员" : node.type === "city" ? "城市" : `${node.group}标签`;
+  const tags = [node.city, ...(node.tags || []), node.count ? `${node.count} 人关联` : ""].filter(Boolean);
+  const p = node.profile || {};
+  detailEl.innerHTML = `
+    <h2>${esc(node.label)}</h2>
+    <div class="type">${esc(typeLabel)}</div>
+    <div class="meta">${tags.map(tag => `<span class="pill">${esc(tag)}</span>`).join("")}</div>
+    <p class="intro">${esc(node.intro || "这个节点用于聚合相关成员。")}</p>
+    <div class="profile-grid">
+      ${profileRow("行业", p.industries)}
+      ${profileRow("资源", p.resources)}
+      ${profileRow("需求", p.needs)}
+      ${profileRow("能力", p.strengths)}
+      ${profileRow("合作方向", p.collaboration)}
+      ${profileRow("证据", p.evidence)}
+    </div>
+  `;
+  renderRelations(node);
+}
+
+function renderRelations(node = selected){
+  const edges = graph.edges
+    .filter(edge => edge.type !== "业务标签" && (!node || edge.source === node.id || edge.target === node.id))
+    .map(edge => {
+      const otherId = node && edge.source === node.id ? edge.target : edge.source;
+      const other = nodeMap.get(otherId);
+      return { edge, other };
+    })
+    .filter(item => item.other)
+    .sort((a, b) => (b.edge.score || 0) - (a.edge.score || 0))
+    .slice(0, 10);
+
+  if(!edges.length){
+    relationsEl.innerHTML = `<p class="empty">暂无高关联连接。</p>`;
+    return;
+  }
+
+  relationsEl.innerHTML = edges.map(({ edge, other }) => `
+    <div class="relation" data-node="${esc(other.id)}">
+      <div class="relation-top"><b>${esc(other.label)}</b><em class="score">${esc(edge.score || "")}</em></div>
+      <i class="rtype">${esc(edge.type || "业务关联")}</i>
+      <span>${esc(edge.reason || edge.type)}</span>
+      ${edge.synergy ? `<span>${esc(edge.synergy)}</span>` : ""}
+      ${edge.evidence?.length ? `<div class="evidence">${edge.evidence.map(esc).join("<br>")}</div>` : ""}
+      <div class="mini-actions">
+        ${edge.icebreaker ? `<button class="mini-btn" type="button" data-copy="${esc(edge.icebreaker)}">复制话术</button>` : ""}
+        <button class="mini-btn" type="button" data-focus="${esc(other.id)}">查看对方</button>
+      </div>
+    </div>
+  `).join("");
+  relationsEl.querySelectorAll("[data-copy]").forEach(btn => {
+    btn.addEventListener("click", event => {
+      event.stopPropagation();
+      copyText(btn.dataset.copy, btn);
+    });
+  });
+  relationsEl.querySelectorAll("[data-focus]").forEach(btn => {
+    btn.addEventListener("click", event => {
+      event.stopPropagation();
+      selected = nodeMap.get(btn.dataset.focus);
+      renderDetail(selected);
+    });
+  });
+}
+
+function focusGraph(){
+  seedLayout();
+  selected = null;
+  renderDetail();
+}
+
+function pointerPos(event){
+  const rect = canvas.getBoundingClientRect();
+  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+}
+
+canvas.addEventListener("pointermove", event => {
+  pointer = pointerPos(event);
+  if(dragNode){
+    dragNode.x = pointer.x;
+    dragNode.y = pointer.y;
+    dragNode.vx = 0;
+    dragNode.vy = 0;
+    return;
+  }
+  hover = nearestNode(pointer.x, pointer.y);
+  canvas.style.cursor = hover ? "pointer" : "default";
+});
+
+canvas.addEventListener("pointerdown", event => {
+  pointer = pointerPos(event);
+  dragNode = nearestNode(pointer.x, pointer.y);
+  if(dragNode) canvas.setPointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointerup", event => {
+  if(dragNode){
+    selected = dragNode;
+    renderDetail(selected);
+  }
+  dragNode = null;
+  try{ canvas.releasePointerCapture(event.pointerId); }catch(_){}
+});
+
+canvas.addEventListener("mouseleave", () => {
+  hover = null;
+  dragNode = null;
+});
+
+searchInput.addEventListener("input", () => {
+  query = searchInput.value;
+  toast.textContent = query.trim() ? `正在搜索：${query.trim()}` : "已筛选 matched 成员";
+});
+
+fitBtn.addEventListener("click", focusGraph);
+window.addEventListener("resize", () => {
+  resize();
+  seedLayout();
+});
+
+async function init(){
+  resize();
+  const resp = await fetch("/api/graph");
+  if(!resp.ok) throw new Error("图谱数据加载失败");
+  graph = await resp.json();
+  graph.nodes = graph.nodes.map(node => ({ ...node }));
+  nodeMap = new Map(graph.nodes.map(node => [node.id, node]));
+  graph.edges = graph.edges.filter(edge => nodeMap.has(edge.source) && nodeMap.has(edge.target));
+  renderStats(graph.stats);
+  renderFilters(graph.filters || []);
+  seedLayout();
+  renderDetail();
+  loading.classList.add("hide");
+  requestAnimationFrame(tick);
+}
+
+init().catch(error => {
+  loading.innerHTML = `<div>图谱加载失败：${esc(error.message || error)}</div>`;
+});
+</script>
+</body>
+</html>

@@ -851,21 +851,15 @@ async function handleApi(req, res) {
     if (!need) return json(res, 400, { error: "请先填写你的诉求" });
 
     const { people, count } = await loadPeople();
-    const profileData = await loadProfileMatchData();
-    const usingProfiles = profileData.profiles.length > 0;
-    const profileCandidates = usingProfiles
-      ? prefilterProfiles(`${intro} ${need}`, profileData.profiles, excludeIds, 16)
-      : [];
-    const candidates = usingProfiles ? profileCandidates : prefilter(`${intro} ${need}`, people, excludeIds);
+    const candidates = prefilter(`${intro} ${need}`, people, excludeIds);
 
     if (!candidates.length) {
       return json(res, 200, {
         matches: [],
         note: "已经没有更多未推荐过的候选人了，可以换一个更具体的诉求再试。",
         corpusCount: count,
-        profileCount: profileData.count,
         candidateCount: 0,
-        matchSource: usingProfiles ? "graph_profiles" : "raw_directory"
+        matchSource: "raw_directory"
       });
     }
 
@@ -879,12 +873,11 @@ async function handleApi(req, res) {
       };
     }
     return json(res, 200, {
-      matches: usingProfiles ? withProfilePeople(aiResult.matches, profileData.profiles) : withPeople(aiResult.matches, people),
+      matches: withPeople(aiResult.matches, people),
       note: safeText(aiResult.note),
       corpusCount: count,
-      profileCount: profileData.count,
       candidateCount: candidates.length,
-      matchSource: usingProfiles ? "graph_profiles" : "raw_directory"
+      matchSource: "raw_directory"
     });
   }
 

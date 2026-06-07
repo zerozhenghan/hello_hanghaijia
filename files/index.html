@@ -112,14 +112,48 @@
   .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;}
   .tag{font-size:11.5px;color:var(--muted-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;}
   .empty{text-align:center;color:var(--muted);padding:24px 8px;font-size:14.5px;}
-  .morebar{display:none;margin:28px auto 0;width:min(100%,620px);grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
-  .morebar.on{display:grid;}
+  .morebar{display:none;margin:28px auto 0;width:min(100%,520px);}
+  .morebar.on{display:block;}
   .morebar .go,.morebar .ghost{width:100%;min-height:54px;justify-content:center;font-size:16px;}
   .ghost{font-family:var(--body);font-weight:700;color:var(--text);cursor:pointer;background:rgba(255,255,255,0.035);
     border:1px solid var(--line-2);border-radius:11px;padding:12px 18px;display:inline-flex;align-items:center;gap:8px;
     transition:transform .15s, border-color .2s, color .2s, background .2s;}
   .ghost:hover{transform:translateY(-1px);border-color:rgba(47,214,191,0.45);color:var(--accent);background:rgba(47,214,191,0.06);}
   .ghost:disabled{opacity:.42;cursor:not-allowed;transform:none;color:var(--muted);}
+  .secondary-actions{display:grid;grid-template-columns:1fr;margin-top:12px;}
+  .secondary-actions .ghost{text-decoration:none;justify-content:center;min-height:46px;}
+
+  .swipe-stage{display:grid;gap:16px;}
+  .swipe-deck{min-height:430px;display:grid;place-items:center;position:relative;touch-action:pan-y;}
+  .swipe-card{width:100%;min-height:410px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:18px;padding:24px;
+    display:flex;flex-direction:column;box-shadow:0 24px 70px -48px rgba(0,0,0,.75);transition:transform .2s ease, opacity .2s ease, border-color .2s ease;user-select:none;}
+  .swipe-card.dragging{transition:none;cursor:grabbing;}
+  .swipe-card.like{border-color:rgba(47,214,191,.65);}
+  .swipe-card.skip{border-color:rgba(255,140,122,.55);}
+  .swipe-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px;}
+  .swipe-name{font-size:26px;font-weight:900;line-height:1.2;overflow-wrap:anywhere;}
+  .swipe-role{font-size:13px;color:var(--muted);margin-top:6px;}
+  .score-pill{font-family:var(--display);font-weight:700;color:var(--accent);border:1px solid rgba(47,214,191,.26);
+    border-radius:999px;padding:7px 11px;white-space:nowrap;background:rgba(47,214,191,.07);}
+  .value-line{font-size:16px;line-height:1.7;color:var(--text);margin:10px 0 16px;}
+  .swipe-detail{display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:14px;}
+  .swipe-detail.on{display:block;}
+  .detail-toggle{align-self:flex-start;margin-top:auto;border:1px solid var(--line-2);background:rgba(255,255,255,.035);color:var(--text);
+    border-radius:9px;padding:8px 13px;font-family:var(--body);font-weight:700;cursor:pointer;}
+  .decision-mark{position:absolute;top:26px;font-family:var(--display);font-size:30px;font-weight:700;letter-spacing:.08em;
+    opacity:0;pointer-events:none;transform:rotate(-10deg);}
+  .decision-mark.like{left:28px;color:var(--accent);}
+  .decision-mark.skip{right:28px;color:var(--danger);transform:rotate(10deg);}
+  .swipe-card.like .decision-mark.like,.swipe-card.skip .decision-mark.skip{opacity:.9;}
+  .swipe-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
+  .swipe-actions .go,.swipe-actions .ghost{min-height:52px;justify-content:center;}
+  .summary{display:grid;gap:14px;}
+  .summary-head{background:rgba(47,214,191,.06);border:1px solid rgba(47,214,191,.2);border-radius:14px;padding:16px;}
+  .summary-head h3{font-size:18px;margin-bottom:4px;}
+  .summary-head p{font-size:14px;color:var(--muted);}
+  .summary-list{display:grid;gap:12px;}
+  .summary-card{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:18px;}
+  .summary-card .who{margin-bottom:10px;}
 
   /* drawer */
   .drawer{display:none;margin-top:16px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:20px;}
@@ -158,9 +192,17 @@
     .actionbar{flex-direction:column-reverse;align-items:stretch;gap:12px;}
     .go{justify-content:center;}
     .corpus{text-align:center;}
+    .secondary-actions .ghost{min-height:50px;}
     .results{margin-top:26px;gap:12px;}
-    .morebar{margin-top:22px;width:100%;grid-template-columns:1fr;}
+    .morebar{margin-top:22px;width:100%;}
     .morebar .go,.morebar .ghost{min-height:52px;}
+    .swipe-deck{min-height:390px;}
+    .swipe-card{min-height:370px;border-radius:15px;padding:18px;}
+    .swipe-name{font-size:22px;}
+    .swipe-top{display:grid;}
+    .score-pill{justify-self:start;}
+    .value-line{font-size:15px;}
+    .swipe-actions{grid-template-columns:1fr;}
     .card{border-radius:13px;padding:16px;}
     .who{display:grid;gap:3px;}
     .who .name{font-size:17px;line-height:1.35;overflow-wrap:anywhere;}
@@ -215,6 +257,11 @@
         帮我找人
       </button>
     </div>
+    <div class="secondary-actions">
+      <a class="ghost" href="/graph.html">
+        查看关系图谱
+      </a>
+    </div>
   </section>
 
   <div class="loading" id="loading"><span class="spin"></span><span id="loadmsg">正在扫描全场参会者……</span></div>
@@ -222,12 +269,9 @@
   <div class="res-head" id="resHead"><h2 id="resSub"></h2></div>
   <div class="results" id="results"></div>
   <div class="morebar" id="morebar">
-    <button class="ghost" id="prevBatch" type="button">
-      查看上一批
-    </button>
     <button class="go" id="more" type="button">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      换一批
+      再来一批
     </button>
   </div>
 
@@ -243,13 +287,16 @@ const EXAMPLES = [
 ];
 
 const $ = s => document.querySelector(s);
-const introEl=$("#intro"), needEl=$("#need"), goEl=$("#go"), moreEl=$("#more"), prevBatchEl=$("#prevBatch"),
+const introEl=$("#intro"), needEl=$("#need"), goEl=$("#go"), moreEl=$("#more"),
       countEl=$("#count"), resultsEl=$("#results"), resHead=$("#resHead"),
       resSub=$("#resSub"), loading=$("#loading"), loadmsg=$("#loadmsg"),
       morebar=$("#morebar");
 let seenIds = [];
 let batches = [];
-let currentBatchIndex = -1;
+let currentBatch = [];
+let currentCardIndex = 0;
+let interested = [];
+let skipped = [];
 
 const chipsEl=$("#chips");
 EXAMPLES.forEach(t=>{ const c=document.createElement("button"); c.className="chip"; c.textContent=t;
@@ -263,53 +310,145 @@ function startLoading(){ resultsEl.innerHTML=""; resHead.classList.remove("on");
   lmTimer=setInterval(()=>{ i=(i+1)%LOADING_MSGS.length; loadmsg.textContent=LOADING_MSGS[i]; }, 1400); }
 function stopLoading(){ loading.classList.remove("on"); clearInterval(lmTimer); }
 function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+function attr(s){ return esc(s).replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 
-function updateMorebar(){
-  const hasBatch = currentBatchIndex >= 0;
-  morebar.classList.toggle("on", hasBatch);
-  prevBatchEl.disabled = currentBatchIndex <= 0;
+function copyText(text, button){
+  const done=()=>{ const o=button.textContent; button.textContent="已复制 ✓"; setTimeout(()=>button.textContent=o,1500); };
+  navigator.clipboard?.writeText(text).then(done).catch(()=>{
+    const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select();
+    try{document.execCommand("copy");}catch(_){} ta.remove(); done();
+  });
 }
 
-function renderBatch(result, {remember=true}={}){
+function shortText(text, max=86){
+  const value=(text||"").trim();
+  return value.length>max ? value.slice(0,max)+"…" : value;
+}
+
+function startSwipeBatch(result){
   if(result.corpusCount) countEl.textContent = result.corpusCount;
-  const matches = (result.matches||[]).filter(m=>m.person).slice(0,4);
-  resHead.classList.add("on");
-  resSub.textContent = matches.length ? `为你锁定 ${matches.length} 位 · 第 ${currentBatchIndex + 1} 批` : "";
-  let html="";
-  if(result.note){ html += `<div class="note">${esc(result.note)}</div>`; }
-  if(!matches.length){
-    html += `<div class="card" style="opacity:1;transform:none"><div class="empty">这次没有找到足够契合的人选。<br>把诉求说得更具体一点（想要的结果、行业、阶段），AI 会找得更准。</div></div>`;
-    resultsEl.innerHTML=html; updateMorebar(); return;
-  }
-  if(remember) seenIds = [...new Set([...seenIds, ...matches.map(m=>m.id)])];
-  matches.forEach((m,idx)=>{
-    const p=m.person;
-    const score=Math.max(0,Math.min(100,Math.round(m.score||0)));
-    const tags=(p.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("");
-    html += `
-    <div class="card" style="animation-delay:${idx*0.08}s">
-      <div class="c-head">
-        <span class="idx">0${idx+1}</span>
-        <span class="match"><b>${score}</b><i>%</i> 契合</span>
-      </div>
-      <div class="who"><span class="name">${esc(p.name)}</span><span class="role">${esc(p.role)}</span></div>
-      <div class="bar"><i data-w="${score}"></i></div>
-      <div class="block"><div class="lbl">推荐理由</div><p>${esc(m.reason)}</p></div>
-      <div class="block"><div class="lbl">你们的契合点</div><p class="muted">${esc(m.synergy)}</p></div>
-      <div class="block"><div class="lbl">破冰开场白</div><div class="ice"><button class="copy" data-copy="${esc(m.icebreaker)}">复制</button>${esc(m.icebreaker)}</div></div>
-      <div class="tags">${tags}</div>
-    </div>`;
-  });
-  resultsEl.innerHTML=html;
-  requestAnimationFrame(()=>{ resultsEl.querySelectorAll(".bar > i").forEach(i=>{ i.style.width=i.dataset.w+"%"; }); });
-  resultsEl.querySelectorAll(".copy").forEach(b=>{
-    b.onclick=async()=>{ const t=b.dataset.copy;
-      try{ await navigator.clipboard.writeText(t); }
-      catch(e){ const ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");}catch(_){} ta.remove(); }
-      const o=b.textContent; b.textContent="已复制 ✓"; setTimeout(()=>b.textContent=o,1500); };
-  });
-  updateMorebar();
+  currentBatch = (result.matches||[]).filter(m=>m.person).slice(0,8);
+  currentCardIndex = 0;
+  interested = [];
+  skipped = [];
+  seenIds = [...new Set([...seenIds, ...currentBatch.map(m=>m.id)])];
+  batches.push(result);
+  renderCurrentCard();
 }
+
+function renderCurrentCard(){
+  resHead.classList.add("on");
+  morebar.classList.remove("on");
+  if(!currentBatch.length){
+    resSub.textContent = "";
+    resultsEl.innerHTML = `<div class="card" style="opacity:1;transform:none"><div class="empty">这次没有找到足够契合的人选。<br>把诉求说得更具体一点，AI 会找得更准。</div></div>`;
+    morebar.classList.add("on");
+    return;
+  }
+
+  if(currentCardIndex >= currentBatch.length){ showSummary(); return; }
+
+  const m=currentBatch[currentCardIndex];
+  const p=m.person;
+  const score=Math.max(0,Math.min(100,Math.round(m.score||0)));
+  const tags=(p.tags||[]).slice(0,3).map(t=>`<span class="tag">${esc(t)}</span>`).join("");
+  resSub.textContent = `第 ${currentCardIndex+1} / ${currentBatch.length} 位 · 右滑想认识，左滑跳过`;
+  resultsEl.innerHTML = `
+    <section class="swipe-stage">
+      <div class="swipe-deck">
+        <article class="swipe-card" id="swipeCard">
+          <div class="decision-mark like">想认识</div>
+          <div class="decision-mark skip">跳过</div>
+          <div class="swipe-top">
+            <div>
+              <div class="swipe-name">${esc(p.name)}</div>
+              <div class="swipe-role">${esc(p.role)}</div>
+            </div>
+            <div class="score-pill">${score}% 契合</div>
+          </div>
+          <p class="value-line">${esc(shortText(m.reason))}</p>
+          <div class="tags">${tags}</div>
+          <button class="detail-toggle" id="detailToggle" type="button">查看详情</button>
+          <div class="swipe-detail" id="swipeDetail">
+            <div class="block"><div class="lbl">推荐理由</div><p>${esc(m.reason)}</p></div>
+            <div class="block"><div class="lbl">你们的契合点</div><p class="muted">${esc(m.synergy)}</p></div>
+            <div class="block"><div class="lbl">破冰开场白</div><div class="ice"><button class="copy" data-copy="${attr(m.icebreaker)}">复制</button>${esc(m.icebreaker)}</div></div>
+          </div>
+        </article>
+      </div>
+      <div class="swipe-actions">
+        <button class="ghost" id="skipCard" type="button">左滑跳过</button>
+        <button class="go" id="likeCard" type="button">右滑想认识</button>
+      </div>
+    </section>`;
+  bindCardEvents();
+}
+
+function bindCardEvents(){
+  const card=$("#swipeCard");
+  $("#skipCard").onclick=()=>decide("skip");
+  $("#likeCard").onclick=()=>decide("like");
+  $("#detailToggle").onclick=()=>$("#swipeDetail").classList.toggle("on");
+  resultsEl.querySelectorAll(".copy").forEach(b=>b.onclick=()=>copyText(b.dataset.copy,b));
+  let startX=0, dx=0, dragging=false;
+  card.addEventListener("pointerdown", e=>{
+    dragging=true; startX=e.clientX; dx=0; card.classList.add("dragging"); card.setPointerCapture?.(e.pointerId);
+  });
+  card.addEventListener("pointermove", e=>{
+    if(!dragging) return;
+    dx=e.clientX-startX;
+    card.style.transform=`translateX(${dx}px) rotate(${dx/18}deg)`;
+    card.classList.toggle("like", dx>40);
+    card.classList.toggle("skip", dx<-40);
+  });
+  card.addEventListener("pointerup", ()=>{
+    if(!dragging) return;
+    dragging=false; card.classList.remove("dragging");
+    if(dx>90){ decide("like"); return; }
+    if(dx<-90){ decide("skip"); return; }
+    card.style.transform=""; card.classList.remove("like","skip");
+  });
+}
+
+function decide(type){
+  const item=currentBatch[currentCardIndex];
+  if(!item) return;
+  if(type==="like") interested.push(item); else skipped.push(item);
+  const card=$("#swipeCard");
+  if(card){
+    const x=type==="like" ? 520 : -520;
+    card.classList.add(type==="like" ? "like" : "skip");
+    card.style.transform=`translateX(${x}px) rotate(${type==="like" ? 18 : -18}deg)`;
+    card.style.opacity="0";
+  }
+  currentCardIndex += 1;
+  setTimeout(renderCurrentCard, 180);
+}
+
+function showSummary(){
+  resHead.classList.add("on");
+  resSub.textContent = `已筛完 ${currentBatch.length} 位 · 想认识 ${interested.length} 位`;
+  const selected = interested.length ? interested.map((m,idx)=>{
+    const p=m.person;
+    return `
+      <div class="summary-card">
+        <div class="who"><span class="name">${esc(p.name)}</span><span class="role">${esc(p.role)}</span></div>
+        <div class="block"><div class="lbl">为什么值得聊</div><p>${esc(m.synergy || m.reason)}</p></div>
+        <div class="block"><div class="lbl">破冰开场白</div><div class="ice"><button class="copy" data-copy="${attr(m.icebreaker)}">复制</button>${esc(m.icebreaker)}</div></div>
+      </div>`;
+  }).join("") : `<div class="card" style="opacity:1;transform:none"><div class="empty">这一批你还没有选择想认识的人。<br>可以点“再来一批”，继续筛新的候选人。</div></div>`;
+  resultsEl.innerHTML = `
+    <section class="summary">
+      <div class="summary-head">
+        <h3>本批精选联系人</h3>
+        <p>你右滑了 ${interested.length} 位，跳过了 ${skipped.length} 位。下一批会继续排除这些已经出现过的人。</p>
+      </div>
+      <div class="summary-list">${selected}</div>
+    </section>`;
+  resultsEl.querySelectorAll(".copy").forEach(b=>b.onclick=()=>copyText(b.dataset.copy,b));
+  morebar.classList.add("on");
+}
+
 function showError(msg){
   resHead.classList.add("on"); resSub.textContent=""; morebar.classList.remove("on");
   resultsEl.innerHTML = `<div class="card" style="opacity:1;transform:none"><div class="block"><div class="lbl" style="color:var(--danger)">没能完成匹配</div><p class="muted">${esc(msg)}</p></div></div>`;
@@ -318,8 +457,8 @@ function showError(msg){
 async function run({append=false}={}){
   const intro=introEl.value.trim(), need=needEl.value.trim();
   if(!need){ needEl.focus(); needEl.style.borderColor="var(--danger)"; setTimeout(()=>needEl.style.borderColor="",1200); return; }
-  if(!append){ seenIds = []; batches = []; currentBatchIndex = -1; }
-  goEl.disabled=true; moreEl.disabled=true; prevBatchEl.disabled=true; startLoading();
+  if(!append){ seenIds = []; batches = []; }
+  goEl.disabled=true; moreEl.disabled=true; startLoading();
   try{
     const resp = await fetch("/api/match", {
       method: "POST",
@@ -329,21 +468,14 @@ async function run({append=false}={}){
     const result = await resp.json();
     if(!resp.ok) throw new Error(result.error || "后端匹配失败");
     stopLoading();
-    batches.push(result);
-    currentBatchIndex = batches.length - 1;
-    renderBatch(result);
+    startSwipeBatch(result);
   }catch(err){
     stopLoading();
     showError("后端或 AI 接口暂时没有完成匹配。请确认本地服务已启动，且 API 配置可用。\n\n（错误信息："+(err.message||err)+"）");
-  }finally{ goEl.disabled=false; moreEl.disabled=false; updateMorebar(); }
+  }finally{ goEl.disabled=false; moreEl.disabled=false; }
 }
 goEl.addEventListener("click", run);
 moreEl.addEventListener("click", ()=>run({append:true}));
-prevBatchEl.addEventListener("click", ()=>{
-  if(currentBatchIndex <= 0) return;
-  currentBatchIndex -= 1;
-  renderBatch(batches[currentBatchIndex], {remember:false});
-});
 needEl.addEventListener("keydown", e=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") run(); });
 
 async function loadCount(){

@@ -117,7 +117,7 @@ function bigrams(input) {
   return grams;
 }
 
-function prefilter(query, people, excludedIds = [], cap = 40) {
+function prefilter(query, people, excludedIds = [], cap = 60) {
   const excluded = new Set(excludedIds);
   const usefulPeople = people.filter((p) => p.searchText.length > 4 && !excluded.has(p.id));
   if (usefulPeople.length <= cap) return usefulPeople;
@@ -146,15 +146,16 @@ function buildPrompt({ intro, need, candidates }) {
     tags: p.tags
   }));
 
-  return `你是一个高端企业家社群的「AI 人脉顾问」。下面是现场群整理出的参会者名单 JSON。一位成员会告诉你他的身份和当前诉求，请你从名单里挑出最值得他主动链接的 3-4 人。
+  return `你是一个高端企业家社群的「AI 人脉顾问」。下面是现场群整理出的参会者名单 JSON。一位成员会告诉你他的身份和当前诉求，请你从名单里挑出最值得他主动链接的 8 人。
 
 硬性要求：
-1. 只推荐真正契合的人；如果整体契合度一般，就如实在 note 里说明，宁缺毋滥，不要硬凑。
+1. 只推荐真正契合的人；优先返回 8 人，如果确实不足 8 人，就如实在 note 里说明，宁缺毋滥，不要硬凑。
 2. 给每人一个 0-100 的匹配分 score，分数要拉开差距、有区分度。
 3. reason 必须引用对方简介里的具体事实，不要空泛。
 4. synergy 说明双方各能给对方带来什么，体现互惠。
 5. icebreaker 写一句这位成员可以直接发出去的话，自然、具体、不尬。
 6. 全部用简体中文。
+7. 输出必须是合法 JSON。第一个字符必须是 {，最后一个字符必须是 }。
 
 只返回一个 JSON 对象，不要任何解释文字、不要 markdown 代码块，格式严格如下：
 {"matches":[{"id":"参会者id","score":88,"reason":"...","synergy":"...","icebreaker":"..."}],"note":"一句总体点评，可空"}
@@ -209,7 +210,7 @@ async function callAi(prompt) {
     body: JSON.stringify({
       model: config.model,
       input: prompt,
-      max_output_tokens: 1400,
+      max_output_tokens: 3000,
       store: false
     })
   });
@@ -227,7 +228,7 @@ function withPeople(matches, people) {
   const byId = new Map(people.map((p) => [p.id, p]));
   return (matches || [])
     .filter((match) => byId.has(match.id))
-    .slice(0, 4)
+    .slice(0, 8)
     .map((match) => {
       const person = byId.get(match.id);
       return {
@@ -245,6 +246,21 @@ function withPeople(matches, people) {
         }
       };
     });
+}
+
+function fallbackMatches(candidates, intro, need) {
+  return candidates.slice(0, 8).map((person, index) => {
+    const sourceText = safeText(person.intro || person.searchText || "对方信息较少，但与当前诉求有关键词相关。");
+    const introSnippet = sourceText.length > 180 ? `${sourceText.slice(0, 180)}...` : sourceText;
+    const score = Math.max(62, 86 - index * 3);
+    return {
+      id: person.id,
+      score,
+      reason: `候选人信息与诉求存在相关性：${introSnippet}`,
+      synergy: `你当前关注「${safeText(need).slice(0, 48)}」，可以先和对方围绕资源、场景和合作机会做一次轻量交流，判断是否值得继续深入。`,
+      icebreaker: `你好，我看到你的介绍里有一些和我当前诉求相关的方向。我这边${intro ? `是${safeText(intro).slice(0, 42)}` : "正在找合适的合作资源"}，想和你简单交流下是否有合作或互相介绍资源的机会。`
+    };
+  });
 }
 
 async function readBody(req) {
@@ -277,7 +293,15 @@ async function handleApi(req, res) {
         candidateCount: 0
       });
     }
-    const aiResult = await callAi(buildPrompt({ intro, need, candidates }));
+    let aiResult;
+    try {
+      aiResult = await callAi(buildPrompt({ intro, need, candidates }));
+    } catch (error) {
+      aiResult = {
+        matches: fallbackMatches(candidates, intro, need),
+        note: "已先为你整理出 8 位相关候选人，可以左右滑快速筛选，滑完后会生成你想认识的联系人列表。"
+      };
+    }
     return json(res, 200, {
       matches: withPeople(aiResult.matches, people),
       note: safeText(aiResult.note),

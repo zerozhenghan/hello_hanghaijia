@@ -142,37 +142,7 @@ function bigrams(input) {
   return grams;
 }
 
-const MATCH_QUERY_EXPANSIONS = [
-  {
-    triggers: ["驾校", "陪练", "教练", "学车", "车后", "汽车"],
-    terms: ["本地生活", "车后服务", "汽车服务", "门店", "同城", "线下服务", "服务商", "区域"]
-  },
-  {
-    triggers: ["城市合伙人", "合伙人", "招商", "加盟", "代理", "同行"],
-    terms: ["城市", "区域", "代理", "加盟", "招商", "合伙", "合伙人", "分销", "渠道", "连锁", "门店", "1~10", "0~1"]
-  },
-  {
-    triggers: ["赋能", "培训", "教练", "同行", "陪跑"],
-    terms: ["培训", "付费培训", "陪跑", "训练营", "交付", "标准化", "SOP", "赋能", "咨询"]
-  },
-  {
-    triggers: ["粉丝", "全网", "抖音", "小红书", "流量", "私域"],
-    terms: ["流量", "粉丝", "抖音", "小红书", "私域", "IP", "获客", "转化"]
-  }
-];
-
-function expandMatchQuery(query) {
-  const clean = safeText(query);
-  const extraTerms = new Set();
-  MATCH_QUERY_EXPANSIONS.forEach((group) => {
-    if (group.triggers.some((trigger) => clean.includes(trigger))) {
-      group.terms.forEach((term) => extraTerms.add(term));
-    }
-  });
-  return safeText([clean, ...extraTerms].join(" "));
-}
-
-function prefilter(query, people, excludedIds = [], cap = 60) {
+function prefilter(query, people, excludedIds = [], cap = 40) {
   const excluded = new Set(excludedIds);
   const usefulPeople = people.filter((p) => p.searchText.length > 4 && !excluded.has(p.id));
   if (usefulPeople.length <= cap) return usefulPeople;
@@ -184,7 +154,7 @@ function prefilter(query, people, excludedIds = [], cap = 60) {
       for (const gram of bigrams(p.searchText)) {
         if (q.has(gram)) hit += 1;
       }
-      if (p.name.length >= 2 && safeText(query).includes(p.name)) hit += 30;
+      if (safeText(query).includes(p.name)) hit += 30;
       return { person: p, hit };
     })
     .sort((a, b) => b.hit - a.hit)
@@ -881,7 +851,7 @@ async function handleApi(req, res) {
     if (!need) return json(res, 400, { error: "请先填写你的诉求" });
 
     const { people, count } = await loadPeople();
-    const candidates = prefilter(expandMatchQuery(`${intro} ${need}`), people, excludeIds);
+    const candidates = prefilter(`${intro} ${need}`, people, excludeIds);
 
     if (!candidates.length) {
       return json(res, 200, {

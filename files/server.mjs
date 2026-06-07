@@ -468,8 +468,45 @@ function withProfilePeople(matches, profiles) {
     });
 }
 
+const FALLBACK_BUSINESS_RULES = [
+  { weight: 18, words: ["招商", "加盟", "代理", "渠道", "城市合伙人", "合伙人", "分销", "连锁"] },
+  { weight: 16, words: ["本地生活", "车后", "汽车", "车品", "驾校", "门店", "同城", "线下"] },
+  { weight: 14, words: ["0~1", "0-1", "1~10", "1-10", "操盘", "增长", "项目", "孵化"] },
+  { weight: 12, words: ["培训", "付费培训", "训练营", "陪跑", "交付", "SOP", "标准化", "课程"] },
+  { weight: 10, words: ["团队", "管理", "教练", "服务商", "商家", "获客", "转化", "私域"] },
+  { weight: 8, words: ["粉丝", "抖音", "小红书", "流量", "IP", "矩阵"] }
+];
+
+function fallbackBusinessScore(person, need) {
+  const textValue = safeText([person.name, person.role, person.intro, person.searchText].join(" ")).toLowerCase();
+  const needText = safeText(need).toLowerCase();
+  let score = 0;
+
+  FALLBACK_BUSINESS_RULES.forEach((rule) => {
+    rule.words.forEach((word) => {
+      const clean = word.toLowerCase();
+      if (textValue.includes(clean)) score += rule.weight;
+      if (needText.includes(clean) && textValue.includes(clean)) score += Math.ceil(rule.weight * 0.6);
+    });
+  });
+
+  if (needText.includes("同行") && /培训|付费培训|训练营|陪跑|交付|sop|标准化/.test(textValue)) score += 18;
+  if (needText.includes("城市合伙人") && /本地生活|门店|线下|服务商|区域|合伙人|代理/.test(textValue)) score += 20;
+  if (/驾校|陪练|教练/.test(needText) && /本地生活|车后|汽车|车品|门店|线下/.test(textValue)) score += 24;
+  if (!safeText(person.intro) || person.meta?.status === "unmatched") score -= 80;
+
+  return score;
+}
+
+function sortFallbackCandidates(candidates, need) {
+  return [...candidates]
+    .map((person, index) => ({ person, index, score: fallbackBusinessScore(person, need) }))
+    .sort((a, b) => (b.score - a.score) || (a.index - b.index))
+    .map((item) => item.person);
+}
+
 function fallbackMatches(candidates, intro, need) {
-  return candidates.slice(0, 8).map((person, index) => {
+  return sortFallbackCandidates(candidates, need).slice(0, 8).map((person, index) => {
     const p = person.profile || {};
     const resources = compactArray(p.resources, 3);
     const needs = compactArray(p.needs, 3);
